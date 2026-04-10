@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Recomendación Musical — Canvas</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#00C9A7;--amber:#FFB347;--dark:#080C14;--dark2:#0E1420;--dark3:#141B28;
+  --card:#111827;--card2:#1A2336;--border:rgba(255,255,255,0.07);
+  --border-accent:rgba(0,201,167,0.3);--text:#F0F4FF;--muted:rgba(240,244,255,0.45);
+}
+body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,201,167,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,201,167,0.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+.orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0}
+.orb-1{width:500px;height:500px;background:rgba(0,201,167,0.08);top:-100px;right:-100px}
+.orb-2{width:400px;height:400px;background:rgba(255,179,71,0.06);bottom:0;left:-80px}
+.canvas{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:48px 40px 64px;display:grid;gap:20px}
+.header{display:grid;grid-template-columns:1fr auto;align-items:start;gap:24px;padding-bottom:24px;border-bottom:1px solid var(--border);animation:fadeUp 0.6s ease both}
+.label-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,201,167,0.1);border:1px solid rgba(0,201,167,0.25);color:var(--teal);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;padding:5px 12px;border-radius:20px;margin-bottom:14px}
+.label-pill::before{content:'';display:block;width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+h1{font-family:'Syne',sans-serif;font-size:clamp(26px,3.2vw,46px);font-weight:800;line-height:1.1;letter-spacing:-0.02em}
+h1 em{font-style:normal;color:var(--teal)}
+.meta-box{text-align:right;flex-shrink:0}
+.tech-badge{display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px}
+.badge{background:var(--card2);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:4px 10px;border-radius:6px}
+.badge.accent{border-color:var(--border-accent);color:var(--teal)}
+.waveform{display:flex;align-items:flex-end;gap:3px;height:32px;margin-top:10px}
+.waveform span{display:block;width:3px;background:var(--teal);border-radius:2px;opacity:0.6;animation:wave var(--d,1.2s) ease-in-out infinite alternate}
+@keyframes wave{from{height:var(--lo,4px)}to{height:var(--hi,24px)}}
+.main-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:border-color 0.3s;animation:fadeUp 0.5s ease both}
+.card:hover{border-color:rgba(0,201,167,0.2)}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent);opacity:0;transition:opacity 0.3s}
+.card:hover::after{opacity:0.5}
+.card-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--teal);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.card-label::before{content:'';display:block;width:16px;height:1px;background:var(--teal);opacity:0.5}
+.card h2{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:12px;line-height:1.3}
+.card p{font-size:13.5px;line-height:1.7;color:var(--muted)}
+.card-problema{grid-column:1/-1;background:var(--card2);border-color:rgba(0,201,167,0.15);display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px}
+.problema-num{font-family:'Syne',sans-serif;font-size:40px;font-weight:800;color:rgba(0,201,167,0.15);line-height:1;margin-bottom:4px}
+.problema-title{font-size:14px;font-weight:500;margin-bottom:6px}
+.problema-desc{font-size:12.5px;color:var(--muted);line-height:1.6}
+.card-objetivo{grid-column:span 2}
+.objetivo-text{font-family:'Syne',sans-serif;font-size:14.5px;font-weight:400;line-height:1.65;border-left:2px solid var(--teal);padding-left:16px;margin-top:4px}
+.objetivo-text strong{color:var(--teal);font-weight:700}
+.obj-chips{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.obj-chip{font-size:12px;color:var(--muted);background:var(--dark3);padding:6px 12px;border-radius:8px;border:1px solid var(--border)}
+.tech-stack{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.tech-item{display:flex;align-items:center;justify-content:space-between;background:var(--dark3);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.tech-name{font-family:'DM Mono',monospace;font-size:12px}
+.tech-role{font-size:11px;color:var(--muted)}
+.tech-bar-wrap{width:60px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.tech-bar{height:100%;background:var(--teal);border-radius:2px}
+.card-justif{grid-column:1/-1;background:var(--card2);border-color:rgba(255,179,71,0.15)}
+.justif-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:14px}
+.justif-item{background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.justif-item::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--amber);opacity:0.4}
+.justif-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);margin-bottom:8px;opacity:0.7}
+.justif-author{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px}
+.justif-aporte{font-size:12px;color:var(--muted);line-height:1.6}
+.justif-tag{display:inline-block;margin-top:8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);background:rgba(255,179,71,0.08);border:1px solid rgba(255,179,71,0.2);padding:3px 8px;border-radius:5px}
+.card-pipeline{grid-column:span 2}
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px;align-items:start}
+.pipeline-step{text-align:center;position:relative;cursor:pointer;padding:10px 4px;border-radius:10px;border:1px solid transparent;transition:all 0.25s}
+.pipeline-step:hover{background:rgba(0,201,167,0.06);border-color:rgba(0,201,167,0.2)}
+.pipeline-step::after{content:'→';position:absolute;right:-10px;top:16px;color:rgba(0,201,167,0.3);font-size:14px}
+.pipeline-step:last-child::after{display:none}
+.step-num{width:32px;height:32px;border-radius:50%;background:rgba(0,201,167,0.1);border:1px solid rgba(0,201,167,0.3);color:var(--teal);font-family:'DM Mono',monospace;font-size:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;transition:all 0.25s}
+.pipeline-step:hover .step-num{background:rgba(0,201,167,0.2);border-color:var(--teal)}
+.step-label{font-size:11px;color:var(--muted);line-height:1.4}
+.step-hint{font-family:'DM Mono',monospace;font-size:9px;color:var(--teal);opacity:0.5;margin-top:4px;letter-spacing:0.05em}
+.card-modelo{}
+.modelo-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mtag{padding:5px 11px;border-radius:8px;font-size:12px;font-weight:500;background:var(--dark3);border:1px solid var(--border);color:var(--muted)}
+.mtag.hi{background:rgba(0,201,167,0.08);border-color:rgba(0,201,167,0.25);color:var(--teal)}
+.mtag.wa{background:rgba(255,179,71,0.08);border-color:rgba(255,179,71,0.25);color:var(--amber)}
+.card-metricas{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:0;overflow:hidden}
+.metrica{padding:22px 28px;border-right:1px solid var(--border)}
+.metrica:last-child{border-right:none}
+.metrica-arrow{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin-bottom:4px}
+.metrica-arrow.down{color:var(--teal)}
+.metrica-arrow.up{color:var(--amber)}
+.metrica-name{font-size:13px;color:var(--muted);line-height:1.5}
+.metrica-var{font-family:'DM Mono',monospace;font-size:10px;margin-top:4px;opacity:0.4;letter-spacing:0.08em}
+.footer-strip{display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid var(--border)}
+.ref-tag{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;opacity:0.6}
+.ref-tag strong{color:var(--teal);opacity:1}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.card:nth-child(1){animation-delay:0.05s}.card:nth-child(2){animation-delay:0.1s}.card:nth-child(3){animation-delay:0.15s}.card:nth-child(4){animation-delay:0.2s}.card:nth-child(5){animation-delay:0.25s}.card:nth-child(6){animation-delay:0.3s}.card:nth-child(7){animation-delay:0.35s}
+
+/* === MODAL === */
+.modal-overlay{position:fixed;inset:0;background:rgba(4,6,12,0.88);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(6px)}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--dark2);border:1px solid var(--border-accent);border-radius:20px;width:100%;max-width:720px;max-height:88vh;overflow-y:auto;position:relative;transform:translateY(20px);transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);scrollbar-width:thin;scrollbar-color:rgba(0,201,167,0.2) transparent}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{padding:28px 32px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--dark2);z-index:10;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.modal-phase-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);letter-spacing:0.12em;margin-bottom:6px}
+.modal-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;line-height:1.2}
+.modal-close{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+.modal-close:hover{background:rgba(0,201,167,0.1);border-color:var(--border-accent);color:var(--teal)}
+.modal-body{padding:28px 32px 32px}
+.modal-body p{font-size:14px;line-height:1.8;color:var(--muted);margin-bottom:16px}
+.msec{margin-bottom:24px}
+.msec-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);letter-spacing:0.1em;margin-bottom:12px;text-transform:uppercase}
+.signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.signal-box{background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:14px}
+.signal-box-label{font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);margin-bottom:8px}
+.slist{list-style:none;display:flex;flex-direction:column;gap:6px}
+.slist li{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+.slist li::before{content:'▸';color:var(--teal);flex-shrink:0;margin-top:1px}
+.ftable{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.ftable th{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);letter-spacing:0.08em}
+.ftable td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--muted);vertical-align:top;line-height:1.5}
+.ftable tr:last-child td{border-bottom:none}
+.ftable td:first-child{color:var(--text);font-weight:500;font-size:12px;white-space:nowrap}
+.abox{background:var(--dark3);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--muted);margin-bottom:8px}
+.abox strong{color:var(--text);display:block;font-size:12px;margin-bottom:3px}
+.abox.ac{border-color:var(--border-accent)}
+.abox.ac strong{color:var(--teal)}
+.cluster-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.cbox{background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.cico{font-size:24px;margin-bottom:8px}
+.cname{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:4px}
+.cdesc{font-size:11px;color:var(--muted);line-height:1.5}
+.hrow{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-top:8px}
+.hbox{background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:16px}
+.hbox.t{border-color:rgba(0,201,167,0.25)}
+.hbox.a{border-color:rgba(255,179,71,0.25)}
+.hlabel{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);margin-bottom:6px}
+.hbox.a .hlabel{color:var(--amber)}
+.htitle{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px}
+.hdesc{font-size:11.5px;color:var(--muted);line-height:1.6}
+.hsep{text-align:center;font-size:20px;color:var(--border-accent)}
+.mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.mcard{background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:14px}
+.mico{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:rgba(0,201,167,0.2);margin-bottom:4px}
+.mname{font-size:13px;font-weight:500;margin-bottom:4px}
+.mdesc{font-size:11px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-phase-num" id="m-num"></div>
+        <div class="modal-title" id="m-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="m-body"></div>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<div class="canvas">
+  <div class="header">
+    <div>
+      <div class="label-pill">Propuesta Teórica &mdash; Proyecto de Semestre</div>
+      <h1>Diseño de arquitectura para<br>recomendación musical <em>inteligente</em></h1>
+      <div class="waveform" id="wf"></div>
+    </div>
+    <div class="meta-box">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Stack tecnológico</div>
+      <div class="tech-badge">
+        <span class="badge accent">PySpark</span>
+        <span class="badge accent">MLlib</span>
+        <span class="badge">HDFS / Parquet</span>
+        <span class="badge">K-Means</span>
+        <span class="badge">ALS</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px;font-family:'DM Mono',monospace;opacity:0.5;">Big Data &bull; Sistemas de Recomendación</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <div class="card card-problema">
+      <div class="card-label">Problema raíz</div>
+      <div>
+        <div class="problema-num">01</div>
+        <div class="problema-title">Perfil estático vs. gusto dinámico</div>
+        <div class="problema-desc">Los motores actuales modelan preferencias históricas fijas, ignorando que el gusto musical cambia con el contexto: hora, actividad, estado emocional.</div>
+      </div>
+      <div>
+        <div class="problema-num">02</div>
+        <div class="problema-title">Señales implícitas sin explotar</div>
+        <div class="problema-desc">El skip rate, el tiempo exacto de escucha y el dispositivo son señales de alta fidelidad que los sistemas convencionales descartan por su volumen.</div>
+      </div>
+      <div>
+        <div class="problema-num">03</div>
+        <div class="problema-title">Cold start no resuelto</div>
+        <div class="problema-desc">Usuarios nuevos no tienen historial. Los enfoques colaborativos fallan aquí. Se requiere un modelo híbrido que arranque desde características acústicas.</div>
+      </div>
+    </div>
+
+    <div class="card card-objetivo">
+      <div class="card-label">Objetivo general</div>
+      <div class="objetivo-text">Diseñar la arquitectura de un <strong>sistema de recomendación híbrido</strong>, basado en el análisis de señales de comportamiento implícito, usando <strong>PySpark como motor de procesamiento distribuido</strong>, con potencial de implementación sobre datasets públicos de streaming.</div>
+      <div class="obj-chips">
+        <div class="obj-chip">✦ Modelar señales implícitas</div>
+        <div class="obj-chip">✦ Pipeline distribuido</div>
+        <div class="obj-chip">✦ Modelo híbrido</div>
+        <div class="obj-chip">✦ Métricas de evaluación</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Arquitectura técnica</div>
+      <h2>Procesamiento distribuido</h2>
+      <div class="tech-stack">
+        <div class="tech-item">
+          <div><div class="tech-name">PySpark MLlib</div><div class="tech-role">Modelo ALS + K-Means</div></div>
+          <div class="tech-bar-wrap"><div class="tech-bar" style="width:90%"></div></div>
+        </div>
+        <div class="tech-item">
+          <div><div class="tech-name">HDFS / Parquet</div><div class="tech-role">Data Lake distribuido</div></div>
+          <div class="tech-bar-wrap"><div class="tech-bar" style="width:75%"></div></div>
+        </div>
+        <div class="tech-item">
+          <div><div class="tech-name">Spotify Dataset</div><div class="tech-role">Features acústicas públicas</div></div>
+          <div class="tech-bar-wrap"><div class="tech-bar" style="width:60%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-justif">
+      <div class="card-label">Justificación — marco académico</div>
+      <h2>Respaldo en literatura científica</h2>
+      <div class="justif-grid">
+        <div class="justif-item">
+          <div class="justif-num">REF [1]</div>
+          <div class="justif-author">Schedl et al.</div>
+          <div class="justif-aporte">Demuestra que los sistemas actuales fallan al ignorar factores intrínsecos (emoción, personalidad) y contextuales (actividad, lugar). Justifica el cold start como problema no resuelto en MRS.</div>
+          <span class="justif-tag">Problema raíz</span>
+        </div>
+        <div class="justif-item">
+          <div class="justif-num">REF [2]</div>
+          <div class="justif-author">Dong, Y.</div>
+          <div class="justif-aporte">Compara filtrado colaborativo, por contenido y modelos híbridos ponderados, demostrando que el enfoque híbrido supera a los individuales en precisión y cobertura.</div>
+          <span class="justif-tag">Modelo híbrido</span>
+        </div>
+        <div class="justif-item">
+          <div class="justif-num">REF [3]</div>
+          <div class="justif-author">Bahadure et al.</div>
+          <div class="justif-aporte">Valida características acústicas de Spotify (BPM, energía, valencia, bailabilidad) como features de clasificación musical, alcanzando 90.4% de accuracy. Justifica la Fase II.</div>
+          <span class="justif-tag">Features acústicas</span>
+        </div>
+        <div class="justif-item">
+          <div class="justif-num">REF [4]</div>
+          <div class="justif-author">Jain et al.</div>
+          <div class="justif-aporte">Implementa recomendación musical con PySpark y K-Means sobre Big Data, validando directamente la elección tecnológica de este proyecto para procesamiento a escala.</div>
+          <span class="justif-tag">PySpark + K-Means</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-pipeline">
+      <div class="card-label">Metodología — pipeline de fases</div>
+      <h2>5 fases arquitectónicas <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);font-weight:400;">(batch processing)</span></h2>
+      <div class="pipeline">
+        <div class="pipeline-step" onclick="openModal(0)">
+          <div class="step-num">I</div>
+          <div class="step-label">Modelado de señales de entrada</div>
+          <div class="step-hint">↗ ver detalle</div>
+        </div>
+        <div class="pipeline-step" onclick="openModal(1)">
+          <div class="step-num">II</div>
+          <div class="step-label">Ingesta y enriquecimiento acústico</div>
+          <div class="step-hint">↗ ver detalle</div>
+        </div>
+        <div class="pipeline-step" onclick="openModal(2)">
+          <div class="step-num">III</div>
+          <div class="step-label">Perfilado con K-Means</div>
+          <div class="step-hint">↗ ver detalle</div>
+        </div>
+        <div class="pipeline-step" onclick="openModal(3)">
+          <div class="step-num">IV</div>
+          <div class="step-label">Motor híbrido ALS + contenido</div>
+          <div class="step-hint">↗ ver detalle</div>
+        </div>
+        <div class="pipeline-step" onclick="openModal(4)">
+          <div class="step-num">V</div>
+          <div class="step-label">Evaluación teórica de métricas</div>
+          <div class="step-hint">↗ ver detalle</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Enfoque del modelo</div>
+      <h2>Modelo híbrido</h2>
+      <p style="font-size:13px;margin-bottom:10px;">Combina dos estrategias según el perfil del usuario.</p>
+      <div class="modelo-tags">
+        <span class="mtag hi">Filtrado colaborativo</span>
+        <span class="mtag hi">Filtrado por contenido</span>
+        <span class="mtag wa">BPM / Energía</span>
+        <span class="mtag wa">Valencia emocional</span>
+        <span class="mtag">Contexto horario</span>
+        <span class="mtag">Dispositivo</span>
+        <span class="mtag">Skip rate</span>
+      </div>
+    </div>
+
+    <div class="card card-metricas">
+      <div class="metrica">
+        <div class="metrica-arrow down">↓ Skip Rate</div>
+        <div class="metrica-name">Reducción de canciones saltadas en playlists automáticas</div>
+        <div class="metrica-var">KPI primario</div>
+      </div>
+      <div class="metrica">
+        <div class="metrica-arrow up">↑ Tasa de guardado</div>
+        <div class="metrica-name">Canciones recomendadas que pasan a la biblioteca del usuario</div>
+        <div class="metrica-var">KPI de engagement</div>
+      </div>
+      <div class="metrica">
+        <div class="metrica-arrow up">↑ Precision@K</div>
+        <div class="metrica-name">Proporción de recomendaciones relevantes entre las K primeras</div>
+        <div class="metrica-var">KPI de calidad del modelo</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-strip">
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <span class="ref-tag"><strong>[1]</strong> Schedl et al. — Current Challenges in MRS</span>
+      <span class="ref-tag"><strong>[2]</strong> Dong — Music RS Based on ML (AMMMP 2023)</span>
+      <span class="ref-tag"><strong>[3]</strong> Bahadure et al. — ML Classification Spotify (2025)</span>
+      <span class="ref-tag"><strong>[4]</strong> Jain et al. — Music RS Big Data PySpark (IEEE 2024)</span>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);opacity:0.4;letter-spacing:0.08em;flex-shrink:0">UIS &bull; 2025</div>
+  </div>
+</div>
+
+<script>
+const wf=document.getElementById('wf');
+const hs=[4,8,14,6,20,10,24,8,16,5,18,12,22,7,15,9,20,6,13,18,4,22,10,16];
+const lo=[2,3,6,2,8,4,10,3,6,2,7,5,9,3,6,4,8,2,5,7,2,9,4,6];
+hs.forEach((h,i)=>{const s=document.createElement('span');s.style.cssText=`--hi:${h}px;--lo:${lo[i]}px;--d:${(0.8+Math.random()*1.2).toFixed(2)}s;animation-delay:${(i*0.07).toFixed(2)}s`;wf.appendChild(s)});
+
+const phases=[
+{num:"FASE I — Metodología",title:"Modelado de señales de entrada",body:`
+<p>Esta fase define <strong style="color:var(--text)">qué datos captura el sistema y cómo se clasifican formalmente</strong>. No se recopilan datos reales; se diseña el esquema de eventos que cualquier implementación futura debería registrar. Es la base semántica de todo el pipeline.</p>
+<div class="msec">
+  <div class="msec-title">Taxonomía de señales</div>
+  <div class="signal-grid">
+    <div class="signal-box">
+      <div class="signal-box-label">✦ Señales explícitas (alta confianza)</div>
+      <ul class="slist">
+        <li>Canción marcada como favorita o guardada</li>
+        <li>Añadida manualmente a una playlist</li>
+        <li>Compartida en redes sociales</li>
+        <li>Artista o género seguido activamente</li>
+      </ul>
+    </div>
+    <div class="signal-box">
+      <div class="signal-box-label" style="color:var(--teal)">✦ Señales implícitas (volumen masivo)</div>
+      <ul class="slist">
+        <li>Skip antes de los 30 segundos → rechazo</li>
+        <li>Escucha completa repetida → preferencia fuerte</li>
+        <li>Pausa prolongada durante reproducción</li>
+        <li>Artista bloqueado explícitamente</li>
+      </ul>
+    </div>
+    <div class="signal-box" style="grid-column:span 2">
+      <div class="signal-box-label">✦ Señales de contexto (enriquecimiento situacional)</div>
+      <ul class="slist" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <li>Hora del día y día de la semana</li>
+        <li>Tipo de dispositivo (móvil, PC, altavoz)</li>
+        <li>Geolocalización aproximada</li>
+        <li>Velocidad de cambio de pista</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<div class="msec">
+  <div class="msec-title">Diseño del esquema de evento</div>
+  <p>Cada interacción se registra como un evento JSON con los campos: <code style="background:var(--dark3);padding:2px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;color:var(--teal)">user_id, track_id, timestamp, event_type, duration_listened, skip_at_second, device, context</code>. Este esquema plano es compatible con ingesta directa en HDFS en formato Parquet particionado por fecha.</p>
+</div>`},
+
+{num:"FASE II — Metodología",title:"Ingesta y enriquecimiento acústico",body:`
+<p>Con el esquema de eventos definido, esta fase diseña <strong style="color:var(--text)">cómo almacenar, transformar y enriquecer esos datos a escala</strong>. El enriquecimiento consiste en cruzar los logs de usuario con las características acústicas de cada canción, convirtiendo registros de comportamiento en vectores multidimensionales procesables por los modelos.</p>
+<div class="msec">
+  <div class="msec-title">Arquitectura del pipeline de ingesta</div>
+  <div class="abox"><strong>1. Fuente de eventos</strong>Logs de interacción en formato JSON, provenientes de datasets públicos (Spotify MPD, FMA) que simulan comportamiento real de usuario.</div>
+  <div class="abox"><strong>2. HDFS + Parquet (Data Lake)</strong>Almacenamiento distribuido columnar. Particionado por fecha y user_id para lectura eficiente en PySpark. El formato Parquet reduce el tamaño en disco entre 4–8x respecto a CSV.</div>
+  <div class="abox"><strong>3. PySpark — Transformación y join</strong>Operación de join entre la tabla de eventos (user_id, track_id, señal) y la tabla de features acústicas (track_id → BPM, Energy, Valence…). Se ejecuta como job batch distribuido.</div>
+  <div class="abox ac"><strong>4. Dataset enriquecido (salida)</strong>Cada registro = (usuario, canción, señal comportamental, features acústicas, contexto situacional). Este es el input de la Fase III.</div>
+</div>
+<div class="msec">
+  <div class="msec-title">Features acústicas utilizadas</div>
+  <table class="ftable">
+    <tr><th>Feature</th><th>Descripción</th><th>Rango</th></tr>
+    <tr><td>BPM / Tempo</td><td>Velocidad de la pieza musical</td><td>40 – 210 bpm</td></tr>
+    <tr><td>Energy</td><td>Intensidad y actividad perceptiva de la canción</td><td>0.0 – 1.0</td></tr>
+    <tr><td>Valence</td><td>Positividad emocional transmitida al oyente</td><td>0.0 – 1.0</td></tr>
+    <tr><td>Danceability</td><td>Aptitud para el baile según ritmo y beat</td><td>0.0 – 1.0</td></tr>
+    <tr><td>Acousticness</td><td>Probabilidad de que el track sea acústico</td><td>0.0 – 1.0</td></tr>
+    <tr><td>Instrumentalness</td><td>Ausencia de contenido vocal en la canción</td><td>0.0 – 1.0</td></tr>
+  </table>
+</div>`},
+
+{num:"FASE III — Metodología",title:"Perfilado de usuario con K-Means",body:`
+<p>Esta fase define <strong style="color:var(--text)">cómo representar matemáticamente a cada usuario</strong> y cómo agrupar usuarios con comportamientos similares en clusters accionables. El algoritmo K-Means de PySpark MLlib está respaldado directamente por Jain et al. (IEEE I2CT, 2024).</p>
+<div class="msec">
+  <div class="msec-title">Construcción del vector de perfil de usuario</div>
+  <p>El perfil de cada usuario se calcula como el <strong style="color:var(--text)">promedio ponderado de las features acústicas</strong> de las canciones escuchadas hasta el final, penalizado por las saltadas. Resultado: un vector en ℝ⁶ que representa su "huella musical".</p>
+  <div class="abox ac"><strong>Vector de usuario u</strong>= media_ponderada(BPM, Energy, Valence, Dance, Acoustic, Instrumental) sobre historial de escuchas completas, con peso negativo para skips.</div>
+</div>
+<div class="msec">
+  <div class="msec-title">Clusters resultantes (arquetipos de oyente)</div>
+  <div class="cluster-grid">
+    <div class="cbox"><div class="cico">⚡</div><div class="cname">Oyente de alta energía</div><div class="cdesc">Alto BPM, alta Energy, alta Danceability. Sesiones predominantes en horas de ejercicio y desplazamiento.</div></div>
+    <div class="cbox"><div class="cico">🌙</div><div class="cname">Oyente contemplativo</div><div class="cdesc">Baja Energy, alta Acousticness, alta Instrumentalness. Noche, horas de estudio o relajación.</div></div>
+    <div class="cbox"><div class="cico">🎷</div><div class="cname">Oyente de nicho vintage</div><div class="cdesc">Features mixtas, patrones de escucha concentrados en fines de semana. Alta Instrumentalness.</div></div>
+  </div>
+</div>
+<div class="msec">
+  <div class="msec-title">Patrones de transición entre canciones</div>
+  <p>Complementariamente se modelan las <strong style="color:var(--text)">secuencias de escucha dentro de una sesión</strong>: qué tipo de canción suele seguir a otra. Esto añade información de flujo contextual al perfil, permitiendo que el motor de la Fase IV recomiende no solo canciones aisladas sino transiciones coherentes.</p>
+  <p>El número óptimo de K se determina con el <strong style="color:var(--text)">método del codo (elbow method)</strong>, graficando la inercia intra-cluster en función de K y seleccionando el punto de inflexión.</p>
+</div>`},
+
+{num:"FASE IV — Metodología",title:"Motor híbrido ALS + filtrado por contenido",body:`
+<p>Esta es la fase central del diseño. El motor combina <strong style="color:var(--text)">dos estrategias complementarias</strong> según la densidad del historial del usuario, resolviendo el problema de escala con ALS y el cold start con filtrado por contenido, tal como propone Schedl et al. y valida Dong (AMMMP 2023).</p>
+<div class="msec">
+  <div class="msec-title">Las dos ramas del modelo</div>
+  <div class="hrow">
+    <div class="hbox t">
+      <div class="hlabel">Usuarios con historial suficiente</div>
+      <div class="htitle">Filtrado colaborativo — ALS</div>
+      <div class="hdesc">Alternating Least Squares de PySpark MLlib. Factoriza la matriz usuario-canción en factores latentes. Recomienda basándose en usuarios con comportamiento similar, sin analizar el contenido de la canción.</div>
+    </div>
+    <div class="hsep">⟷</div>
+    <div class="hbox a">
+      <div class="hlabel" style="color:var(--amber)">Usuarios nuevos — cold start</div>
+      <div class="htitle">Filtrado por contenido</div>
+      <div class="hdesc">Compara el vector acústico de canciones conocidas del usuario con el catálogo completo por similitud coseno. Recomienda canciones acústicamente similares sin necesitar historial colaborativo.</div>
+    </div>
+  </div>
+</div>
+<div class="msec">
+  <div class="msec-title">Lógica de ponderación por densidad de historial</div>
+  <table class="ftable">
+    <tr><th>Historial del usuario</th><th>Rama activa</th><th>Peso ALS / Contenido</th></tr>
+    <tr><td>&gt; 50 canciones</td><td>ALS dominante</td><td>80% / 20%</td></tr>
+    <tr><td>10 – 50 canciones</td><td>Modelo mixto balanceado</td><td>50% / 50%</td></tr>
+    <tr><td>&lt; 10 canciones</td><td>Contenido dominante</td><td>20% / 80%</td></tr>
+    <tr><td>0 canciones (nuevo)</td><td>Solo contenido + popularidad global</td><td>0% / 100%</td></tr>
+  </table>
+</div>
+<div class="msec">
+  <div class="msec-title">Salida del motor</div>
+  <p>Para cada usuario, el motor produce una lista ordenada de <strong style="color:var(--text)">K canciones recomendadas</strong> con su score de relevancia ponderado. Esta lista ordenada es el input de la Fase V para la evaluación de calidad del sistema.</p>
+</div>`},
+
+{num:"FASE V — Metodología",title:"Evaluación teórica de métricas",body:`
+<p>Al ser una propuesta arquitectónica, esta fase <strong style="color:var(--text)">no ejecuta la evaluación sino que la diseña rigurosamente</strong>: define qué métricas se usarían, cómo se calcularían y qué dataset público permitiría validarlas en una implementación futura. Esto diferencia una propuesta de investigación de una especulativa.</p>
+<div class="msec">
+  <div class="msec-title">Métricas de evaluación propuestas</div>
+  <div class="mcards">
+    <div class="mcard">
+      <div class="mico">↓</div>
+      <div class="mname">Skip Rate</div>
+      <div class="mdesc">Proporción de canciones saltadas antes de los 30s sobre el total reproducido en modo automático. KPI de relevancia inmediata.</div>
+    </div>
+    <div class="mcard">
+      <div class="mico">↑</div>
+      <div class="mname">Tasa de guardado</div>
+      <div class="mdesc">Porcentaje de canciones recomendadas que el usuario añade a su biblioteca. Indica valor percibido a largo plazo.</div>
+    </div>
+    <div class="mcard">
+      <div class="mico">P@K</div>
+      <div class="mname">Precision@K</div>
+      <div class="mdesc">De las K primeras recomendaciones, ¿cuántas son relevantes? Métrica estándar en sistemas de recuperación de información.</div>
+    </div>
+  </div>
+</div>
+<div class="msec">
+  <div class="msec-title">Datasets propuestos para validación</div>
+  <div class="abox"><strong>Spotify Million Playlist Dataset (MPD)</strong>1 millón de playlists públicas con metadatos de canciones. Permite simular comportamiento de usuario y calcular Precision@K comparando recomendaciones contra playlists reales como ground truth.</div>
+  <div class="abox"><strong>Free Music Archive (FMA)</strong>Dataset abierto con features acústicas pre-calculadas. Ideal para la rama de filtrado por contenido sin necesidad de acceso a la API de Spotify.</div>
+</div>
+<div class="msec">
+  <div class="msec-title">Protocolo de evaluación A/B (diseño teórico)</div>
+  <p>Se propone dividir el dataset en grupo de <strong style="color:var(--text)">control</strong> (recomendación por popularidad global) y grupo <strong style="color:var(--text)">experimental</strong> (motor híbrido diseñado). El éxito se define como una reducción estadísticamente significativa del skip rate y un aumento en Precision@K en el grupo experimental frente al de control.</p>
+</div>`}
+];
+
+function openModal(i){
+  document.getElementById('m-num').textContent=phases[i].num;
+  document.getElementById('m-title').textContent=phases[i].title;
+  document.getElementById('m-body').innerHTML=phases[i].body;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()});
+</script>
+</body>
+</html>
